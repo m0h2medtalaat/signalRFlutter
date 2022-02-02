@@ -42,7 +42,10 @@ public class MainActivity extends FlutterActivity implements EventChannel.Stream
             eventSink.success(s);
         }
     });
+
     }
+
+
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
@@ -50,8 +53,10 @@ public class MainActivity extends FlutterActivity implements EventChannel.Stream
         new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL)
                 .setMethodCallHandler(
                         (call, result) -> {
+                            returnResult = result;
                             if(call.method.equals("signalR")) {
                                 try {
+                                    returnResult = result;
                                     String userId = call.argument("userId");
                                     String token = call.argument("token");
 
@@ -76,7 +81,6 @@ public class MainActivity extends FlutterActivity implements EventChannel.Stream
                                     }
                                     Log.e("Exception", "temp");
 
-                                    result.success("temp");
                                 } catch ( Exception e) {
                                     result.error("error","errorMessage","any");
                                 }
@@ -84,8 +88,18 @@ public class MainActivity extends FlutterActivity implements EventChannel.Stream
                             else {
                                 result.notImplemented();
                             }
+                            Intent intent = getIntent();
+                            if (intent.hasExtra("pushedNotificationIntent")) {
+                                Bundle extras = intent.getExtras();
+                                String notificationMessage = extras.getString("pushedNotificationIntent", "UNDEFINED");
+                                Log.e("pushedNotification", notificationMessage);
+                                intent.removeExtra(notificationMessage);
+                                result.success(notificationMessage);
+                            }
                         }
+
                 );
+
 
         eventChannel =new  EventChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), EVENT_CHANNEL);
         eventChannel.setStreamHandler(this);
