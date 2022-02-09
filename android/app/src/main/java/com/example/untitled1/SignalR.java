@@ -9,14 +9,16 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
 import com.example.untitled1.models.NotificationModel;
+
 import com.google.gson.Gson;
 import com.smartarmenia.dotnetcoresignalrclientjava.HubConnection;
 import com.smartarmenia.dotnetcoresignalrclientjava.HubConnectionListener;
 import com.smartarmenia.dotnetcoresignalrclientjava.HubEventListener;
 import com.smartarmenia.dotnetcoresignalrclientjava.HubMessage;
 import com.smartarmenia.dotnetcoresignalrclientjava.WebSocketHubConnectionP2;
+
+import java.util.Random;
 
 public class SignalR implements   HubConnectionListener, HubEventListener {
    private static SignalR signalR ;
@@ -48,7 +50,7 @@ public class SignalR implements   HubConnectionListener, HubEventListener {
 
     @Override
     public void onDisconnected() {
-        Log.e("Connected", "disconnected");
+        Log.e("disconnected", "disconnected");
     }
 
     @Override
@@ -91,8 +93,7 @@ public class SignalR implements   HubConnectionListener, HubEventListener {
 
     }
     public void destroySocket(){
-        connection.removeListener(this);
-        connection.unSubscribeFromEvent("Send", this);
+
         connection.disconnect();
     }
     public void pushNotification(String message , Context context) {
@@ -121,9 +122,10 @@ public class SignalR implements   HubConnectionListener, HubEventListener {
         builder.setAutoCancel(true);
         builder.setContentIntent(pendingIntent);
         builder.setOngoing(true);
+        Random random = new Random();
 
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(notificationID, builder.build());
+        notificationManager.notify(random.nextInt(), builder.build());
     }
 
 }

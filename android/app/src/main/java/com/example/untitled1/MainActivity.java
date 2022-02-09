@@ -28,6 +28,7 @@ public class MainActivity extends FlutterActivity implements EventChannel.Stream
     private static final  String EVENT_CHANNEL = "com.unit1.beacon.entered.beacons";
     String channelID = "channel1";
     SignalR mySignalR ;
+    private MethodChannel.Result returnResult;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -85,6 +86,24 @@ public class MainActivity extends FlutterActivity implements EventChannel.Stream
                                     result.error("error","errorMessage","any");
                                 }
                             }
+                            else if (call.method.equals("stopSignalR")) {
+                                try {
+                                    if (foregroundServiceRunning()) {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                                this.stopService(new Intent(this,
+                                                        MyForegroundService.class));
+
+                                                result.success("Service has been stopped");
+
+                                            }
+                                        }
+                                    }
+
+                                } catch (Exception e) {
+                                    result.error("error", "errorMessage", "any");
+                                }
+                            }
                             else {
                                 result.notImplemented();
                             }
@@ -133,6 +152,17 @@ public class MainActivity extends FlutterActivity implements EventChannel.Stream
         return false;
     }
 
+    protected void onNewIntent(@NonNull Intent intent) {
+        super.onNewIntent(intent);
+        if (intent.hasExtra("pushedNotificationIntent")) {
+            Bundle extras = intent.getExtras();
+            String notificationMessage = extras.getString("pushedNotificationIntent", "UNDEFINED");
+            Log.e("pushedNotification", notificationMessage);
+            intent.removeExtra(notificationMessage);
+            if(eventSink != null)
+                eventSink.success("onNotificationPressed");
+        }
+    }
 
 
     @Override

@@ -1,15 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import 'notification_listener.dart';
+import 'package:restart_app/restart_app.dart';
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  static StreamController<NotificationDataArg> streamController =
+      StreamController<NotificationDataArg>.broadcast();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -40,7 +43,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
-    connectToAndroidChannel();
     super.initState();
   }
 
@@ -49,37 +51,96 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('EventChannel Background Issue Sample'),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: StreamBuilder(
-            stream: EventChannelBackgroundIssue.getData,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                print('Data Received: ${snapshot.data}'
-                    'Total Data in List: ${_data.length}');
-                _data.add(snapshot.data.toString());
-                return Text('Latest Data: ${snapshot.data}');
-              }
-              return Text('No Data');
-            },
-          ),
+        appBar: AppBar(
+          title: Text('EventChannel Background Issue Sample'),
         ),
-      ),
-    );
+        body: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(_data.length == 0 ? 'No Data' : _data[_data.length - 1]),
+            SizedBox(
+              height: 20,
+            ),
+            InkWell(
+              onTap: () async {
+                var result = await platform.invokeMethod(
+                  'stopSignalR',
+                );
+                print(result);
+                Restart.restartApp();
+              },
+              child: const Material(
+                color: Colors.deepPurple,
+                child: Text("stop Service"),
+              ),
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            InkWell(
+              onTap: () {
+                connectToAndroidChannel(
+                    "com.unit1.beacon.entered.beacons", "token");
+              },
+              child: const Material(
+                color: Colors.deepPurple,
+                child: Text("start Service"),
+              ),
+            )
+          ],
+        ));
   }
 
-  Future<void> connectToAndroidChannel() async {
-    String response = "";
+  Future<void> connectToAndroidChannel(String userId, String token) async {
+    _streamSubscription = EventChannelBackground.getData.listen((event) {
+      if (event != "onNotificationPressed") {
+        NotificationDataArg notificationDataArg =
+            NotificationDataArg.fromJson(jsonDecode(event)[0]);
+        MyApp.streamController.add(notificationDataArg);
+        setState(() {
+          _data.add(notificationDataArg.toString());
+        });
+      } else {
+        print("NotificationPressed");
+      }
+    });
+
     try {
       final String result = await platform
-          .invokeMethod('signalR', {"userId": "123123", "token": "token"});
-      response = result;
-      print(result);
+          .invokeMethod('signalR', {"userId": userId, "token": token});
+      print("FlutterSignalR:" + result.toString());
+      if (result != "UNDEFINED") {
+        print("NotificationPressed");
+      }
     } on PlatformException catch (e) {
-      response = "Failed to Invoke: '${e.message}'.";
+      throw "Failed to Invoke: '${e.message}'.";
     }
+  }
+}
+
+class EventChannelBackground {
+  static const EventChannel _enteredBeaconsEvent =
+      const EventChannel("com.unit1.beacon.entered.beacons");
+
+  static Stream<dynamic> get getData {
+    return _enteredBeaconsEvent.receiveBroadcastStream();
+  }
+}
+
+class NotificationDataArg {
+  String? body;
+  String? title;
+  int? notificationId;
+  String? orderNumber;
+
+  NotificationDataArg(
+      {this.body, this.title, this.notificationId, this.orderNumber});
+
+  NotificationDataArg.fromJson(Map<String, dynamic> json) {
+    body = json['body'];
+    title = json['title'];
+    notificationId = json['notificationId'];
+    orderNumber = json['orderNumber'];
   }
 }
